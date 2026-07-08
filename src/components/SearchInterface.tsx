@@ -44,6 +44,7 @@ export default function SearchInterface() {
   const [error, setError] = useState("");
   const [searched, setSearched] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [emailSent, setEmailSent] = useState(false);
 
   // Load persisted state from localStorage on mount
   useEffect(() => {
@@ -53,6 +54,7 @@ export default function SearchInterface() {
     const persistedSub = localStorage.getItem("bizfinder_subCategory");
     const persistedLoc = localStorage.getItem("bizfinder_location");
     const persistedMax = localStorage.getItem("bizfinder_maxResults");
+    const persistedEmailSent = localStorage.getItem("bizfinder_email_sent");
 
     if (persistedResults) {
       try {
@@ -66,6 +68,7 @@ export default function SearchInterface() {
     if (persistedSub) setSubCategory(persistedSub);
     if (persistedLoc) setLocation(persistedLoc);
     if (persistedMax) setMaxResults(Number(persistedMax));
+    if (persistedEmailSent === "true") setEmailSent(true);
   }, []);
 
   async function handleSearch(e: React.FormEvent) {
@@ -73,6 +76,7 @@ export default function SearchInterface() {
     setError("");
     setResults([]);
     setSearched(false);
+    setEmailSent(false);
     setLoading(true);
 
     try {
@@ -89,9 +93,12 @@ export default function SearchInterface() {
         const foundResults = data.data || [];
         setResults(foundResults);
         setSearched(true);
+        const sentFlag = data.emailSent || false;
+        setEmailSent(sentFlag);
         // Persist to localStorage
         localStorage.setItem("bizfinder_search_results", JSON.stringify(foundResults));
         localStorage.setItem("bizfinder_searched", "true");
+        localStorage.setItem("bizfinder_email_sent", sentFlag ? "true" : "false");
         localStorage.setItem("bizfinder_typeOfBusiness", typeOfBusiness);
         localStorage.setItem("bizfinder_subCategory", subCategory);
         localStorage.setItem("bizfinder_location", location);
@@ -174,12 +181,12 @@ export default function SearchInterface() {
           <div>
             <label className="block text-xs text-slate-400 mb-1.5 uppercase tracking-wide font-medium">
               Max Results
-              <span className="ml-2 text-slate-600 normal-case font-normal">(1–100)</span>
+              <span className="ml-2 text-slate-600 normal-case font-normal">(1–50)</span>
             </label>
             <input
               type="number"
               min={1}
-              max={100}
+              max={50}
               value={maxResults}
               onChange={(e) => setMaxResults(Number(e.target.value))}
               className="w-full bg-bg-elevated border border-bg-border rounded-lg px-4 py-3 text-white text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all"
@@ -225,9 +232,17 @@ export default function SearchInterface() {
         </div>
       )}
 
-      {/* Results */}
       {!loading && searched && (
         <div>
+          {emailSent && results.length > 0 && (
+            <div className="flex items-center gap-3 px-4 py-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm mb-5">
+              <Mail className="w-5 h-5 flex-shrink-0 text-emerald-400" />
+              <div>
+                <p className="font-semibold text-white">Results Emailed!</p>
+                <p className="text-xs text-slate-400 mt-0.5">An Excel-compatible CSV file containing all {results.length} results has been sent to your email.</p>
+              </div>
+            </div>
+          )}
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-display font-semibold text-white">
               {results.length > 0 ? (

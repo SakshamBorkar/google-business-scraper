@@ -31,12 +31,16 @@ export async function POST(req: NextRequest) {
       typeOfBusiness: typeOfBusiness.trim(),
       subCategory: subCategory?.trim() || undefined,
       location: location.trim(),
-      maxResults: Math.min(Math.max(parseInt(maxResults) || 20, 1), 100),
+      maxResults: Math.min(Math.max(parseInt(maxResults) || 20, 1), 50),
     };
 
     const results = await runApifyActor(user.apifyKey, params);
 
-    return NextResponse.json({ success: true, data: results, count: results.length });
+    return NextResponse.json({
+      success: true,
+      data: results,
+      count: results.length,
+    });
   } catch (error) {
     console.error("Search error:", error);
     const message = error instanceof Error ? error.message : "Search failed";

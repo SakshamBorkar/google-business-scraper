@@ -71,3 +71,83 @@ export async function sendOtpEmail(
     return false;
   }
 }
+
+export function convertResultsToCsv(results: any[]): string {
+  const headers = [
+    "Name",
+    "Category",
+    "Address",
+    "Phone",
+    "Website",
+    "Rating",
+    "Reviews",
+    "Google Maps URL"
+  ];
+  
+  const rows = results.map((r) => [
+    r.title || r.name || "",
+    r.category || r.categoryName || r.categories?.[0] || "",
+    r.address || "",
+    r.phone || "",
+    r.website || "",
+    r.rating || r.totalScore || "",
+    r.reviews || r.reviewsCount || "",
+    r.googleMapsUrl || ""
+  ]);
+
+  const csvContent = [
+    headers.join(","),
+    ...rows.map((row) =>
+      row
+        .map((val) => {
+          const stringVal = String(val).replace(/"/g, '""'); // Escape double quotes
+          return stringVal.includes(",") || stringVal.includes("\n") || stringVal.includes('"')
+            ? `"${stringVal}"`
+            : stringVal;
+        })
+        .join(",")
+    ),
+  ].join("\n");
+
+  return csvContent;
+}
+
+export async function sendSearchResultsEmail(
+  email: string,
+  name: string,
+  results: any[],
+  query: { typeOfBusiness: string; location: string }
+): Promise<boolean> {
+  try {
+    const csvContent = convertResultsToCsv(results);
+    const filename = `${query.typeOfBusiness.replace(/[^a-zA-Z0-9]/g, "_")}_in_${query.location.replace(/[^a-zA-Z0-9]/g, "_")}.csv`;
+
+    await resend.emails.send({
+      from: FROM_EMAIL,
+      to: email,
+      subject: `Your BizFinder Search Results: ${query.typeOfBusiness} in ${query.location}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <body style="font-family: sans-serif; color: #333;">
+            <h2>Hi ${name},</h2>
+            <p>Here are your search results for <strong>${query.typeOfBusiness}</strong> in <strong>${query.location}</strong>.</p>
+            <p>We found <strong>${results.length}</strong> businesses. The Excel-compatible CSV file is attached to this email.</p>
+            <br/>
+            <p>Best regards,<br/>The BizFinder Team</p>
+          </body>
+        </html>
+      `,
+      attachments: [
+        {
+          filename,
+          content: Buffer.from(csvContent),
+        },
+      ],
+    });
+    return true;
+  } catch (error) {
+    console.error("Failed to send search results email:", error);
+    return false;
+  }
+}
