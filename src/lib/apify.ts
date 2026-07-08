@@ -32,9 +32,9 @@ export async function runApifyActor(
         scrapeDirectories: false,
       };
 
-  // Start the actor run
+  // Start the actor run (using 2048MB memory to prevent Playwright timeouts)
   const runRes = await fetch(
-    `https://api.apify.com/v2/acts/${ACTOR_ID}/runs?token=${apiKey}`,
+    `https://api.apify.com/v2/acts/${ACTOR_ID}/runs?token=${apiKey}&memory=2048`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },

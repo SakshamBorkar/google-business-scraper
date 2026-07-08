@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   MapPin,
@@ -45,6 +45,29 @@ export default function SearchInterface() {
   const [searched, setSearched] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // Load persisted state from localStorage on mount
+  useEffect(() => {
+    const persistedResults = localStorage.getItem("bizfinder_search_results");
+    const persistedSearched = localStorage.getItem("bizfinder_searched");
+    const persistedType = localStorage.getItem("bizfinder_typeOfBusiness");
+    const persistedSub = localStorage.getItem("bizfinder_subCategory");
+    const persistedLoc = localStorage.getItem("bizfinder_location");
+    const persistedMax = localStorage.getItem("bizfinder_maxResults");
+
+    if (persistedResults) {
+      try {
+        setResults(JSON.parse(persistedResults));
+      } catch (e) {
+        console.error("Failed to parse persisted results", e);
+      }
+    }
+    if (persistedSearched === "true") setSearched(true);
+    if (persistedType) setTypeOfBusiness(persistedType);
+    if (persistedSub) setSubCategory(persistedSub);
+    if (persistedLoc) setLocation(persistedLoc);
+    if (persistedMax) setMaxResults(Number(persistedMax));
+  }, []);
+
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     setError("");
@@ -63,8 +86,16 @@ export default function SearchInterface() {
       if (!data.success) {
         setError(data.error || "Search failed");
       } else {
-        setResults(data.data || []);
+        const foundResults = data.data || [];
+        setResults(foundResults);
         setSearched(true);
+        // Persist to localStorage
+        localStorage.setItem("bizfinder_search_results", JSON.stringify(foundResults));
+        localStorage.setItem("bizfinder_searched", "true");
+        localStorage.setItem("bizfinder_typeOfBusiness", typeOfBusiness);
+        localStorage.setItem("bizfinder_subCategory", subCategory);
+        localStorage.setItem("bizfinder_location", location);
+        localStorage.setItem("bizfinder_maxResults", String(maxResults));
       }
     } catch {
       setError("Network error. Please try again.");
