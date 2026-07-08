@@ -225,8 +225,10 @@ export default function SearchInterface() {
               const id = biz.placeId || String(index);
               const isExpanded = expandedId === id;
               const name = biz.title || biz.name || "Unknown Business";
-              const rating = biz.rating || biz.totalScore;
-              const reviews = biz.reviewsCount;
+              const rawRating = biz.rating || biz.totalScore;
+              const rating = typeof rawRating === 'number' ? rawRating : (typeof rawRating === 'string' ? parseFloat(rawRating) : null);
+              const rawReviews = biz.reviewsCount ?? biz.reviews;
+              const reviews = typeof rawReviews === 'number' ? rawReviews : (typeof rawReviews === 'string' ? rawReviews : null);
 
               return (
                 <div
@@ -272,12 +274,14 @@ export default function SearchInterface() {
                             {biz.address}
                           </span>
                         )}
-                        {rating && (
+                        {rating !== null && !isNaN(rating) && (
                           <span className="flex items-center gap-1 text-xs text-amber-400">
                             <Star className="w-3 h-3 fill-amber-400" />
                             {rating.toFixed(1)}
-                            {reviews && (
-                              <span className="text-slate-500">({reviews.toLocaleString()})</span>
+                            {reviews !== null && (
+                              <span className="text-slate-500">
+                                ({typeof reviews === 'number' ? reviews.toLocaleString() : reviews})
+                              </span>
                             )}
                           </span>
                         )}

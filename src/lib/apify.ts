@@ -6,23 +6,31 @@ export async function runApifyActor(
   apiKey: string,
   params: SearchParams
 ): Promise<BusinessResult[]> {
-  const searchTerms = params.subCategory
-    ? [`${params.subCategory} ${params.typeOfBusiness}`]
-    : [params.typeOfBusiness];
+  const isDineshsScraper = ACTOR_ID.includes("google-business-scraper");
 
-  const input = {
-    searchStringsArray: searchTerms,
-    locationQuery: params.location,
-    maxCrawledPlacesPerSearch: params.maxResults,
-    language: "en",
-    deeperCityScrape: false,
-    includeHistogram: false,
-    includeOpeningHours: true,
-    includePeopleAlsoSearch: false,
-    exportPlaceUrls: false,
-    additionalInfo: false,
-    scrapeDirectories: false,
-  };
+  const input = isDineshsScraper
+    ? {
+        businessType: params.subCategory
+          ? `${params.subCategory} ${params.typeOfBusiness}`
+          : params.typeOfBusiness,
+        location: params.location,
+        maxResults: params.maxResults,
+      }
+    : {
+        searchStringsArray: params.subCategory
+          ? [`${params.subCategory} ${params.typeOfBusiness}`]
+          : [params.typeOfBusiness],
+        locationQuery: params.location,
+        maxCrawledPlacesPerSearch: params.maxResults,
+        language: "en",
+        deeperCityScrape: false,
+        includeHistogram: false,
+        includeOpeningHours: true,
+        includePeopleAlsoSearch: false,
+        exportPlaceUrls: false,
+        additionalInfo: false,
+        scrapeDirectories: false,
+      };
 
   // Start the actor run
   const runRes = await fetch(
@@ -46,44 +54,78 @@ export async function runApifyActor(
 
   if (!runId) throw new Error("Failed to get run ID from Apify");
 
-  // Poll for completion
+  // Poll for completion or partial results
   let status = "RUNNING";
   let attempts = 0;
-  const maxAttempts = 120; // 2 minutes max
+  const maxAttempts = 200; // ~10 minutes max polling time (200 * 3 seconds)
+  let results: BusinessResult[] = [];
 
   while (status === "RUNNING" || status === "READY") {
-    if (attempts >= maxAttempts) {
-      throw new Error("Search timed out. Please try again.");
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, 3000));
     attempts++;
 
+    // Check status
     const statusRes = await fetch(
       `https://api.apify.com/v2/actor-runs/${runId}?token=${apiKey}`
     );
 
-    if (!statusRes.ok) continue;
+    if (statusRes.ok) {
+      const statusData = await statusRes.json();
+      status = statusData?.data?.status;
+    }
 
-    const statusData = await statusRes.json();
-    status = statusData?.data?.status;
+    // Try fetching dataset items so far
+    const datasetRes = await fetch(
+      `https://api.apify.com/v2/actor-runs/${runId}/dataset/items?token=${apiKey}&limit=${params.maxResults}`
+    );
+
+    if (datasetRes.ok) {
+      const items = await datasetRes.json();
+      if (Array.isArray(items) && items.length > 0) {
+        results = items;
+        // Stop early if we have reached the requested maxResults
+        if (results.length >= params.maxResults) {
+          break;
+        }
+      }
+    }
+
+    // Break if the run finished
+    if (status !== "RUNNING" && status !== "READY") {
+      break;
+    }
+
+    // If we've been polling for a while and have at least some results, return them
+    if (attempts >= maxAttempts && results.length > 0) {
+      break;
+    }
+
+    // If we hit the limit and still have no results, throw a timeout
+    if (attempts >= maxAttempts && results.length === 0) {
+      throw new Error("Search timed out. Please try again.");
+    }
   }
 
-  if (status !== "SUCCEEDED") {
-    throw new Error(`Actor run failed with status: ${status}`);
+  // If the run is still running, abort it to save your credits!
+  if (status === "RUNNING" || status === "READY") {
+    await fetch(
+      `https://api.apify.com/v2/actor-runs/${runId}/abort?token=${apiKey}`,
+      { method: "POST" }
+    ).catch(() => {});
   }
 
-  // Fetch results
-  const datasetRes = await fetch(
-    `https://api.apify.com/v2/actor-runs/${runId}/dataset/items?token=${apiKey}&limit=${params.maxResults}`
-  );
-
-  if (!datasetRes.ok) {
-    throw new Error("Failed to fetch results from Apify");
+  // Fetch final list if status succeeded in the meantime
+  if (results.length === 0) {
+    const datasetRes = await fetch(
+      `https://api.apify.com/v2/actor-runs/${runId}/dataset/items?token=${apiKey}&limit=${params.maxResults}`
+    );
+    if (datasetRes.ok) {
+      const items = await datasetRes.json();
+      results = Array.isArray(items) ? items : [];
+    }
   }
 
-  const results = await datasetRes.json();
-  return Array.isArray(results) ? results : [];
+  return results;
 }
 
 export async function validateApifyKey(apiKey: string): Promise<boolean> {
