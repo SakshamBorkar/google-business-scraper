@@ -76,6 +76,9 @@ export default function AuthForm() {
       if (!data.success) {
         setError(data.error || "Invalid code");
       } else {
+        if (data.token) {
+          localStorage.setItem("bf_session", data.token);
+        }
         router.push(data.user?.apifyKey ? "/dashboard" : "/settings/apify-key");
         router.refresh();
       }

@@ -1,5 +1,5 @@
 import { SignJWT, jwtVerify } from "jose";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { prisma } from "./prisma";
 import type { User } from "@/types";
 
@@ -29,7 +29,17 @@ export async function createSession(userId: string): Promise<string> {
 export async function getSession(): Promise<User | null> {
   try {
     const cookieStore = cookies();
-    const token = cookieStore.get(SESSION_COOKIE)?.value;
+    let token = cookieStore.get(SESSION_COOKIE)?.value;
+
+    if (!token) {
+      // Fallback for mobile / Capacitor requests that pass token via Authorization header
+      const headersList = headers();
+      const authHeader = headersList.get("authorization");
+      if (authHeader && authHeader.startsWith("Bearer ")) {
+        token = authHeader.substring(7);
+      }
+    }
+
     if (!token) return null;
 
     const { payload } = await jwtVerify(token, SECRET);

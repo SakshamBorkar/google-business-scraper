@@ -7,6 +7,11 @@ export default async function SettingsLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // During static mobile export, we don't have session cookies, so we bypass server-side redirect
+  if (process.env.IS_CAPACITOR === "true") {
+    return <AppShell>{children}</AppShell>;
+  }
+
   const user = await getSession();
   if (!user) redirect("/auth");
 

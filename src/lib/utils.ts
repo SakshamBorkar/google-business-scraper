@@ -34,3 +34,22 @@ export function getApiUrl(path: string): string {
   const cleanBase = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
   return `${cleanBase}${cleanPath}`;
 }
+
+export async function authFetch(
+  url: string,
+  options: RequestInit = {}
+): Promise<Response> {
+  const headers = new Headers(options.headers);
+
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("bf_session");
+    if (token) {
+      headers.set("Authorization", `Bearer ${token}`);
+    }
+  }
+
+  return fetch(url, {
+    ...options,
+    headers,
+  });
+}

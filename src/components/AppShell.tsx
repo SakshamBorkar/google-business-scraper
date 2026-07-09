@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   LayoutDashboard,
   Search,
@@ -12,11 +12,11 @@ import {
   Menu,
   X,
 } from "lucide-react";
-import { cn, getApiUrl } from "@/lib/utils";
+import { cn, getApiUrl, authFetch } from "@/lib/utils";
 import type { User } from "@/types";
 
 interface AppShellProps {
-  user: User;
+  user?: User;
   children: React.ReactNode;
 }
 
@@ -33,12 +33,63 @@ export default function AppShell({ user, children }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(user || null);
+  const [loading, setLoading] = useState(!user);
+
+  useEffect(() => {
+    if (user) {
+      setCurrentUser(user);
+      setLoading(false);
+      return;
+    }
+
+    async function fetchUser() {
+      const token = localStorage.getItem("bf_session");
+      if (!token) {
+        router.push("/auth");
+        return;
+      }
+
+      try {
+        const res = await authFetch(getApiUrl("/api/auth/me"));
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.user) {
+            setCurrentUser(data.user);
+          } else {
+            localStorage.removeItem("bf_session");
+            router.push("/auth");
+          }
+        } else {
+          localStorage.removeItem("bf_session");
+          router.push("/auth");
+        }
+      } catch {
+        router.push("/auth");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchUser();
+  }, [user, router]);
 
   async function handleLogout() {
-    await fetch(getApiUrl("/api/auth/logout"), { method: "POST" });
+    await authFetch(getApiUrl("/api/auth/logout"), { method: "POST" });
+    localStorage.removeItem("bf_session");
     router.push("/");
     router.refresh();
   }
+
+  if (loading) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-bg-base">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div>
+      </div>
+    );
+  }
+
+  if (!currentUser) return null;
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -99,7 +150,7 @@ export default function AppShell({ user, children }: AppShellProps) {
             >
               <Icon className={cn("w-4 h-4", active ? "text-amber-400" : "text-slate-500 group-hover:text-slate-300")} />
               {item.label}
-              {!user.apifyKey && item.href === "/settings/apify-key" && (
+              {!currentUser.apifyKey && item.href === "/settings/apify-key" && (
                 <span className="ml-auto w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
               )}
             </Link>
@@ -112,12 +163,12 @@ export default function AppShell({ user, children }: AppShellProps) {
         <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-bg-elevated mb-1">
           <div className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
             <span className="text-amber-400 text-xs font-bold font-display">
-              {user.name.charAt(0).toUpperCase()}
+              {currentUser.name.charAt(0).toUpperCase()}
             </span>
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-white truncate">{user.name}</p>
-            <p className="text-xs text-slate-500 truncate">{user.email}</p>
+            <p className="text-sm font-medium text-white truncate">{currentUser.name}</p>
+            <p className="text-xs text-slate-500 truncate">{currentUser.email}</p>
           </div>
         </div>
         <button

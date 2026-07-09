@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
 
     const res = NextResponse.json({
       success: true,
+      token, // Return token so mobile/Capacitor client can save it in localStorage
       user: {
         id: user.id,
         name: user.name,
