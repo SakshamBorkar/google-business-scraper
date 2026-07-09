@@ -6,7 +6,13 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function getApiUrl(path: string): string {
-  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  let cleanPath = path.startsWith("/") ? path : `/${path}`;
+
+  // Next.js trailingSlash config causes redirects on API paths, which fails CORS preflights.
+  // We append a trailing slash to API paths to avoid redirects.
+  if (cleanPath.startsWith("/api/") && !cleanPath.endsWith("/")) {
+    cleanPath = `${cleanPath}/`;
+  }
 
   if (typeof window !== "undefined") {
     // Check if running inside Capacitor (Android/iOS webviews)
