@@ -1,12 +1,12 @@
-import { getSession } from "@/lib/auth";
-import { redirect } from "next/navigation";
+"use client";
+
 import Link from "next/link";
 import SearchInterface from "@/components/SearchInterface";
 import { AlertCircle } from "lucide-react";
+import { useUser } from "@/components/AppShell";
 
-export default async function SearchPage() {
-  const user = await getSession();
-  if (!user) redirect("/auth");
+export default function SearchPage() {
+  const { user } = useUser();
 
   if (!user.apifyKey) {
     return (

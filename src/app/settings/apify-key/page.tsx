@@ -1,10 +1,10 @@
-import { getSession } from "@/lib/auth";
-import { redirect } from "next/navigation";
-import ApifyKeyForm from "@/components/ApifyKeyForm";
+"use client";
 
-export default async function ApifyKeyPage() {
-  const user = await getSession();
-  if (!user) redirect("/auth");
+import ApifyKeyForm from "@/components/ApifyKeyForm";
+import { useUser } from "@/components/AppShell";
+
+export default function ApifyKeyPage() {
+  const { user } = useUser();
 
   return (
     <div className="p-6 lg:p-10 max-w-2xl mx-auto">

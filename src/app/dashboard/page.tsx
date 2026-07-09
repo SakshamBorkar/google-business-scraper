@@ -1,11 +1,11 @@
-import { getSession } from "@/lib/auth";
-import { redirect } from "next/navigation";
+"use client";
+
 import Link from "next/link";
 import { Search, Key, ArrowRight, CheckCircle2, AlertCircle } from "lucide-react";
+import { useUser } from "@/components/AppShell";
 
-export default async function DashboardPage() {
-  const user = await getSession();
-  if (!user) redirect("/auth");
+export default function DashboardPage() {
+  const { user } = useUser();
 
   const hasApiKey = Boolean(user.apifyKey);
 

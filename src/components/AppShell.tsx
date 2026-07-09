@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, createContext, useContext } from "react";
 import {
   LayoutDashboard,
   Search,
@@ -20,6 +20,19 @@ interface AppShellProps {
   children: React.ReactNode;
 }
 
+export const UserContext = createContext<{
+  user: User;
+  refreshUser: () => Promise<void>;
+} | null>(null);
+
+export function useUser() {
+  const context = useContext(UserContext);
+  if (!context) {
+    throw new Error("useUser must be used within AppShell");
+  }
+  return context;
+}
+
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/search", label: "Search", icon: Search },
@@ -35,6 +48,20 @@ export default function AppShell({ user, children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(user || null);
   const [loading, setLoading] = useState(!user);
+
+  async function refreshUser() {
+    try {
+      const res = await authFetch(getApiUrl("/api/auth/me"));
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.user) {
+          setCurrentUser(data.user);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
 
   useEffect(() => {
     if (user) {
@@ -183,44 +210,46 @@ export default function AppShell({ user, children }: AppShellProps) {
   );
 
   return (
-    <div className="flex h-screen bg-bg-base overflow-hidden">
-      {/* Desktop sidebar */}
-      <aside className="hidden lg:flex w-60 flex-shrink-0 bg-bg-surface border-r border-bg-border flex-col">
-        <SidebarContent />
-      </aside>
+    <UserContext.Provider value={{ user: currentUser, refreshUser }}>
+      <div className="flex h-screen bg-bg-base overflow-hidden">
+        {/* Desktop sidebar */}
+        <aside className="hidden lg:flex w-60 flex-shrink-0 bg-bg-surface border-r border-bg-border flex-col">
+          <SidebarContent />
+        </aside>
 
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setSidebarOpen(false)}
-          />
-          <aside className="absolute left-0 top-0 h-full w-64 bg-bg-surface border-r border-bg-border">
-            <SidebarContent />
-          </aside>
+        {/* Mobile sidebar overlay */}
+        {sidebarOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <div
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setSidebarOpen(false)}
+            />
+            <aside className="absolute left-0 top-0 h-full w-64 bg-bg-surface border-r border-bg-border">
+              <SidebarContent />
+            </aside>
+          </div>
+        )}
+
+        {/* Main content */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Mobile topbar */}
+          <header className="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-bg-border bg-bg-surface">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-bg-hover transition-all"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <span className="font-display font-bold text-white">
+              Biz<span className="text-amber-500">Finder</span>
+            </span>
+          </header>
+
+          <main className="flex-1 overflow-y-auto">
+            {children}
+          </main>
         </div>
-      )}
-
-      {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Mobile topbar */}
-        <header className="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-bg-border bg-bg-surface">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-bg-hover transition-all"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-          <span className="font-display font-bold text-white">
-            Biz<span className="text-amber-500">Finder</span>
-          </span>
-        </header>
-
-        <main className="flex-1 overflow-y-auto">
-          {children}
-        </main>
       </div>
-    </div>
+    </UserContext.Provider>
   );
 }
