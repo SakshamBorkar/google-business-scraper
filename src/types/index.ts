@@ -30,6 +30,7 @@ export interface BusinessResult {
   reviewsCount?: number;
   totalScore?: number;
   categoryName?: string;
+  category?: string;
   categories?: string[];
   description?: string;
   email?: string;
@@ -40,6 +41,7 @@ export interface BusinessResult {
   permanentlyClosed?: boolean;
   placeId?: string;
   googleMapsUrl?: string;
+  reviews?: number | string;
 }
 
 export interface OpeningHour {

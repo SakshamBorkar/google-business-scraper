@@ -15,6 +15,7 @@ import {
   ChevronDown,
   ChevronUp,
   Mail,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { BusinessResult } from "@/types";
@@ -44,7 +45,11 @@ export default function SearchInterface() {
   const [error, setError] = useState("");
   const [searched, setSearched] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Email CSV states
+  const [sendingEmail, setSendingEmail] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [emailError, setEmailError] = useState("");
 
   // Load persisted state from localStorage on mount
   useEffect(() => {
@@ -54,7 +59,6 @@ export default function SearchInterface() {
     const persistedSub = localStorage.getItem("bizfinder_subCategory");
     const persistedLoc = localStorage.getItem("bizfinder_location");
     const persistedMax = localStorage.getItem("bizfinder_maxResults");
-    const persistedEmailSent = localStorage.getItem("bizfinder_email_sent");
 
     if (persistedResults) {
       try {
@@ -68,7 +72,6 @@ export default function SearchInterface() {
     if (persistedSub) setSubCategory(persistedSub);
     if (persistedLoc) setLocation(persistedLoc);
     if (persistedMax) setMaxResults(Number(persistedMax));
-    if (persistedEmailSent === "true") setEmailSent(true);
   }, []);
 
   async function handleSearch(e: React.FormEvent) {
@@ -76,7 +79,6 @@ export default function SearchInterface() {
     setError("");
     setResults([]);
     setSearched(false);
-    setEmailSent(false);
     setLoading(true);
 
     try {
@@ -93,12 +95,9 @@ export default function SearchInterface() {
         const foundResults = data.data || [];
         setResults(foundResults);
         setSearched(true);
-        const sentFlag = data.emailSent || false;
-        setEmailSent(sentFlag);
         // Persist to localStorage
         localStorage.setItem("bizfinder_search_results", JSON.stringify(foundResults));
         localStorage.setItem("bizfinder_searched", "true");
-        localStorage.setItem("bizfinder_email_sent", sentFlag ? "true" : "false");
         localStorage.setItem("bizfinder_typeOfBusiness", typeOfBusiness);
         localStorage.setItem("bizfinder_subCategory", subCategory);
         localStorage.setItem("bizfinder_location", location);
@@ -108,6 +107,82 @@ export default function SearchInterface() {
       setError("Network error. Please try again.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  // Helper to convert results to CSV in client browser
+  function convertToCsv(data: BusinessResult[]): string {
+    const headers = [
+      "Name",
+      "Category",
+      "Address",
+      "Phone",
+      "Website",
+      "Rating",
+      "Reviews",
+      "Google Maps URL"
+    ];
+    
+    const rows = data.map((r) => [
+      r.title || r.name || "",
+      r.category || r.categoryName || r.categories?.[0] || "",
+      r.address || "",
+      r.phone || "",
+      r.website || "",
+      r.rating || r.totalScore || "",
+      r.reviews || r.reviewsCount || "",
+      r.googleMapsUrl || ""
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) =>
+        row
+          .map((val) => {
+            const stringVal = String(val).replace(/"/g, '""'); // Escape double quotes
+            return stringVal.includes(",") || stringVal.includes("\n") || stringVal.includes('"')
+              ? `"${stringVal}"`
+              : stringVal;
+          })
+          .join(",")
+      ),
+    ].join("\n");
+
+    return csvContent;
+  }
+
+  async function handleEmailCsv() {
+    if (results.length === 0) return;
+    setSendingEmail(true);
+    setEmailSent(false);
+    setEmailError("");
+    
+    const cleanType = typeOfBusiness ? typeOfBusiness.replace(/[^a-zA-Z0-9]/g, "_") : "leads";
+    const cleanLoc = location ? location.replace(/[^a-zA-Z0-9]/g, "_") : "search";
+    const filename = `${cleanType}_in_${cleanLoc}.csv`;
+    
+    const csvContent = convertToCsv(results);
+
+    try {
+      const res = await fetch("/api/email-csv", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ csvContent, filename }),
+      });
+
+      const data = await res.json();
+      if (!data.success) {
+        setEmailError(data.error || "Failed to email CSV file");
+      } else {
+        setEmailSent(true);
+        setTimeout(() => {
+          setEmailSent(false);
+        }, 3000);
+      }
+    } catch {
+      setEmailError("Network error. Please try again.");
+    } finally {
+      setSendingEmail(false);
     }
   }
 
@@ -234,27 +309,54 @@ export default function SearchInterface() {
 
       {!loading && searched && (
         <div>
-          {emailSent && results.length > 0 && (
-            <div className="flex items-center gap-3 px-4 py-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm mb-5">
-              <Mail className="w-5 h-5 flex-shrink-0 text-emerald-400" />
-              <div>
-                <p className="font-semibold text-white">Results Emailed!</p>
-                <p className="text-xs text-slate-400 mt-0.5">An Excel-compatible CSV file containing all {results.length} results has been sent to your email.</p>
-              </div>
-            </div>
-          )}
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-display font-semibold text-white">
-              {results.length > 0 ? (
-                <>
-                  <span className="text-amber-400">{results.length}</span> results found
-                </>
-              ) : (
-                "No results found"
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-bg-border">
+            <div>
+              <h2 className="font-display font-semibold text-white">
+                {results.length > 0 ? (
+                  <>
+                    <span className="text-amber-400">{results.length}</span> results found
+                  </>
+                ) : (
+                  "No results found"
+                )}
+              </h2>
+              {results.length > 0 && (
+                <p className="text-xs text-slate-500 mt-1">Click a card to expand details</p>
               )}
-            </h2>
+            </div>
             {results.length > 0 && (
-              <p className="text-xs text-slate-500">Click a card to expand details</p>
+              <div className="flex flex-col items-end gap-1.5">
+                <button
+                  onClick={handleEmailCsv}
+                  disabled={sendingEmail}
+                  className={cn(
+                    "flex items-center justify-center gap-2 px-4 py-2 rounded-xl border text-xs font-semibold shadow-md transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed",
+                    emailSent
+                      ? "bg-emerald-950/40 text-emerald-400 border-emerald-500/30 hover:bg-emerald-950/40 hover:border-emerald-500/30"
+                      : "bg-slate-800 hover:bg-slate-700 border-slate-700 hover:border-slate-600 text-slate-200 hover:text-white"
+                  )}
+                >
+                  {sendingEmail ? (
+                    <>
+                      <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
+                      Sending Email...
+                    </>
+                  ) : emailSent ? (
+                    <>
+                      <Check className="w-4 h-4 text-emerald-400" />
+                      Email Sent!
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="w-4 h-4 text-amber-400" />
+                      Email Excel (CSV)
+                    </>
+                  )}
+                </button>
+                {emailError && (
+                  <p className="text-[11px] text-rose-400 font-medium">{emailError}</p>
+                )}
+              </div>
             )}
           </div>
 
