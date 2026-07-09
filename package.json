@@ -12,15 +12,19 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/cli": "^7.6.7",
+    "@capacitor/core": "^8.4.1",
+    "@capacitor/ios": "^8.4.1",
     "@prisma/client": "^5.14.0",
+    "clsx": "^2.1.1",
+    "cookies-next": "^4.2.1",
+    "jose": "^5.2.4",
+    "lucide-react": "^0.383.0",
     "next": "14.2.4",
     "react": "^18",
     "react-dom": "^18",
     "resend": "^3.2.0",
-    "jose": "^5.2.4",
-    "cookies-next": "^4.2.1",
-    "lucide-react": "^0.383.0",
-    "clsx": "^2.1.1",
     "tailwind-merge": "^2.3.0"
   },
   "devDependencies": {
