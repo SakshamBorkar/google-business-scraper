@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Mail, User, Loader2, CheckCircle2 } from "lucide-react";
+import { getApiUrl } from "@/lib/utils";
 
 type Step = "register" | "otp";
 
@@ -36,7 +37,7 @@ export default function AuthForm() {
 
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/send-otp", {
+      const res = await fetch(getApiUrl("/api/auth/send-otp"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: name.trim(), email: email.trim().toLowerCase() }),
@@ -65,7 +66,7 @@ export default function AuthForm() {
 
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/verify-otp", {
+      const res = await fetch(getApiUrl("/api/auth/verify-otp"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim().toLowerCase(), code: otp }),
@@ -91,7 +92,7 @@ export default function AuthForm() {
     setOtp("");
 
     try {
-      await fetch("/api/auth/send-otp", {
+      await fetch(getApiUrl("/api/auth/send-otp"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email }),

@@ -17,7 +17,7 @@ import {
   Mail,
   Check,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, getApiUrl } from "@/lib/utils";
 import type { BusinessResult } from "@/types";
 
 const BUSINESS_TYPES = [
@@ -82,7 +82,7 @@ export default function SearchInterface() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/search", {
+      const res = await fetch(getApiUrl("/api/search"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ typeOfBusiness, subCategory, location, maxResults }),
@@ -164,7 +164,7 @@ export default function SearchInterface() {
     const csvContent = convertToCsv(results);
 
     try {
-      const res = await fetch("/api/email-csv", {
+      const res = await fetch(getApiUrl("/api/email-csv"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ csvContent, filename }),

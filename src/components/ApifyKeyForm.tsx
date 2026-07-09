@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Key, Loader2, CheckCircle2, Trash2 } from "lucide-react";
+import { getApiUrl } from "@/lib/utils";
 
 interface ApifyKeyFormProps {
   hasKey: boolean;
@@ -29,7 +30,7 @@ export default function ApifyKeyForm({ hasKey }: ApifyKeyFormProps) {
 
     setLoading(true);
     try {
-      const res = await fetch("/api/apify-key", {
+      const res = await fetch(getApiUrl("/api/apify-key"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ apiKey: apiKey.trim() }),
@@ -57,7 +58,7 @@ export default function ApifyKeyForm({ hasKey }: ApifyKeyFormProps) {
     setError("");
 
     try {
-      const res = await fetch("/api/apify-key", { method: "DELETE" });
+      const res = await fetch(getApiUrl("/api/apify-key"), { method: "DELETE" });
       const data = await res.json();
       if (data.success) {
         setSuccess("API key removed");

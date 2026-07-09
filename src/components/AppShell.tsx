@@ -12,7 +12,7 @@ import {
   Menu,
   X,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, getApiUrl } from "@/lib/utils";
 import type { User } from "@/types";
 
 interface AppShellProps {
@@ -35,7 +35,7 @@ export default function AppShell({ user, children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   async function handleLogout() {
-    await fetch("/api/auth/logout", { method: "POST" });
+    await fetch(getApiUrl("/api/auth/logout"), { method: "POST" });
     router.push("/");
     router.refresh();
   }
