@@ -6,6 +6,8 @@ export function corsResponse(res: NextResponse, req: NextRequest) {
   // Allow the specific capacitor origin or the website itself
   const allowedOrigins = [
     "capacitor://localhost",
+    "https://localhost",
+    "http://localhost",
     "http://localhost:3000",
     "https://google-business-scraper-amber.vercel.app"
   ];
