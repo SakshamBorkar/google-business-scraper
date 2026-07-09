@@ -1,10 +1,18 @@
-import Link from "next/link";
-import { getSession } from "@/lib/auth";
-import { redirect } from "next/navigation";
+"use client";
 
-export default async function LandingPage() {
-  const user = await getSession();
-  if (user) redirect("/dashboard");
+import Link from "next/link";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
+export default function LandingPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    const token = localStorage.getItem("bf_session");
+    if (token) {
+      router.push("/dashboard");
+    }
+  }, [router]);
 
   return (
     <main className="min-h-screen bg-bg-base bg-grid flex flex-col">

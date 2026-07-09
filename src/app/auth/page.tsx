@@ -1,10 +1,29 @@
-import { getSession } from "@/lib/auth";
-import { redirect } from "next/navigation";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import AuthForm from "@/components/AuthForm";
 
-export default async function AuthPage() {
-  const user = await getSession();
-  if (user) redirect("/dashboard");
+export default function AuthPage() {
+  const router = useRouter();
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem("bf_session");
+    if (token) {
+      router.push("/dashboard");
+    } else {
+      setChecking(false);
+    }
+  }, [router]);
+
+  if (checking) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-bg-base">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div>
+      </div>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-bg-base bg-grid flex items-center justify-center px-4">
