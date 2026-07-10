@@ -47,10 +47,15 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
 
+      - name: Set iOS deployment target
+        run: |
+          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = .*/IPHONEOS_DEPLOYMENT_TARGET = 14.0;/g' ios/App/App.xcodeproj/project.pbxproj
+
       # 8. Install CocoaPods dependencies
       - name: Install CocoaPods
         run: |
           cd ios/App
+          sed -i '' 's/platform :ios, .*/platform :ios, '"'"'14.0'"'"'/' Podfile
           pod install --repo-update
 
       # 9. Build unsigned IPA (no Apple Developer account needed for testing)
