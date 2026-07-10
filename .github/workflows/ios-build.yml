@@ -1,0 +1,85 @@
+name: Build iOS IPA
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch: # allows manual trigger from GitHub UI
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+
+    steps:
+      # 1. Checkout your code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      # 3. Install dependencies
+      - name: Install dependencies
+        run: npm ci
+
+      # 4. Build Next.js static export (for Capacitor)
+      - name: Build Next.js
+        run: npm run build
+        env:
+          IS_CAPACITOR: "true"
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+
+      # 5. Install Capacitor CLI
+      - name: Install Capacitor CLI
+        run: npm install -g @capacitor/cli
+
+      # 6. Sync Capacitor (copies web build into ios folder)
+      - name: Capacitor sync
+        run: npx cap sync ios
+
+      # 7. Select Xcode version
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      # 8. Install CocoaPods dependencies
+      - name: Install CocoaPods
+        run: |
+          cd ios/App
+          pod install --repo-update
+
+      # 9. Build unsigned IPA (no Apple Developer account needed for testing)
+      - name: Build IPA (unsigned)
+        run: |
+          xcodebuild \
+            -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -derivedDataPath ios/DerivedData \
+            -destination "generic/platform=iOS Simulator" \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      # 10. Package into .app and zip it for Simulator use
+      - name: Package app for Simulator
+        run: |
+          mkdir -p ios/artifacts
+          APP_PATH=$(find ios/DerivedData -name "*.app" -type d | head -1)
+          echo "Found app at: $APP_PATH"
+          cp -r "$APP_PATH" ios/artifacts/BizFinder.app
+          cd ios/artifacts
+          zip -r BizFinder-Simulator.zip BizFinder.app
+          echo "Packaged successfully"
+
+      # 11. Upload as GitHub artifact (downloadable for 7 days)
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BizFinder-iOS-Simulator
+          path: ios/artifacts/BizFinder-Simulator.zip
+          retention-days: 7
