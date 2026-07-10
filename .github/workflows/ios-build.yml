@@ -48,29 +48,9 @@ jobs:
     - name: Select Xcode
       run: sudo xcode-select -s /Applications/Xcode.app
 
-    - name: Set iOS deployment target
-      run: |
-        sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = .*/IPHONEOS_DEPLOYMENT_TARGET = 15.0;/g' ios/App/App.xcodeproj/project.pbxproj
-
-    - name: Fix Podfile and install CocoaPods
+    - name: Install CocoaPods
       run: |
         cd ios/App
-        # Overwrite deployment target directly
-        cat > Podfile << 'EOF'
-        require_relative '../../node_modules/@capacitor/ios/scripts/pods_helpers'
-
-        platform :ios, '15.0'
-        use_frameworks!
-
-        target 'App' do
-          capacitor_pods
-        end
-
-        post_install do |installer|
-          assertDeploymentTarget(installer)
-        end
-        EOF
-        sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = .*/IPHONEOS_DEPLOYMENT_TARGET = 15.0;/g' App.xcodeproj/project.pbxproj
         pod install --repo-update
 
     # 9. Build unsigned IPA (no Apple Developer account needed for testing)
