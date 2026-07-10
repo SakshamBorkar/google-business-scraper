@@ -31,6 +31,9 @@ jobs:
         env:
           IS_CAPACITOR: "true"
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
 
       # 5. Install Capacitor CLI
       - name: Install Capacitor CLI
