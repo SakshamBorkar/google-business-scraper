@@ -98,4 +98,4 @@ Your actor should accept:
 
 And return items matching the `BusinessResult` type in `src/types/index.ts`.
 
-The default actor ID is set to `compass/google-maps-scraper` — update `APIFY_ACTOR_ID` to point to your custom actor.
+The default actor ID is set to `johnvc/google-maps-places-api` (its results are mapped onto `BusinessResult` in `src/lib/apify.ts`) — update `APIFY_ACTOR_ID` to point to your custom actor.
