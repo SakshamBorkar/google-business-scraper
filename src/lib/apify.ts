@@ -1,14 +1,49 @@
 import type { BusinessResult, SearchParams } from "@/types";
 
-const ACTOR_ID = (process.env.APIFY_ACTOR_ID || "compass/google-maps-scraper").replace("/", "~");
+const ACTOR_ID = (process.env.APIFY_ACTOR_ID || "johnvc/google-maps-places-api").replace("/", "~");
+
+// johnvc/google-maps-places-api uses its own field names, so map them onto
+// BusinessResult and drop the rows it writes when a search fails.
+function normalizePlace(item: Record<string, any>): BusinessResult {
+  return {
+    ...item,
+    phone: item.phone ?? item.phoneNumber,
+    reviewsCount: item.reviewsCount ?? item.ratingCount,
+    categoryName: item.categoryName ?? item.type,
+    categories: item.categories ?? item.types,
+    googleMapsUrl:
+      item.googleMapsUrl ??
+      (item.cid ? `https://maps.google.com/?cid=${item.cid}` : undefined),
+    openingHours:
+      item.openingHours && !Array.isArray(item.openingHours)
+        ? Object.entries(item.openingHours).map(([day, hours]) => ({
+            day,
+            hours: String(hours),
+          }))
+        : item.openingHours,
+  };
+}
 
 export async function runApifyActor(
   apiKey: string,
   params: SearchParams
 ): Promise<BusinessResult[]> {
   const isDineshsScraper = ACTOR_ID.includes("google-business-scraper");
+  const isPlacesApi = ACTOR_ID.includes("google-maps-places-api");
+  const searchTerm = params.subCategory
+    ? `${params.subCategory} ${params.typeOfBusiness}`
+    : params.typeOfBusiness;
 
-  const input = isDineshsScraper
+  const input = isPlacesApi
+    ? {
+        searchTerms: [searchTerm],
+        location: params.location,
+        // The Actor returns at least 20 places per search; the dataset
+        // fetch below still caps the list at maxResults.
+        maxResultsPerSearch: Math.max(params.maxResults, 20),
+        language: "en",
+      }
+    : isDineshsScraper
     ? {
         businessType: params.subCategory
           ? `${params.subCategory} ${params.typeOfBusiness}`
@@ -123,6 +158,14 @@ export async function runApifyActor(
       const items = await datasetRes.json();
       results = Array.isArray(items) ? items : [];
     }
+  }
+
+  if (isPlacesApi) {
+    const places = results.filter((item) => !(item as any).error_message);
+    if (places.length === 0 && results.length > 0) {
+      throw new Error((results[0] as any).error_message);
+    }
+    return places.map(normalizePlace);
   }
 
   return results;
